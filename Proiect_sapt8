@@ -1,0 +1,110 @@
+#include<opencv2/opencv.hpp>
+#include<opencv2/core/core.hpp>
+#include<opencv2/highgui/highgui.hpp>
+#include <iostream>
+using namespace std;
+using namespace cv;
+int main()
+{
+	Mat image = imread("dai.jpg", CV_8UC1);
+	Mat Ix = image.clone();
+	Mat Iy = image.clone();
+	imshow("Imaginea initiala", image);
+	int width = Ix.cols;
+	int height = Ix.rows;
+	int _stride = Ix.step;
+	uint8_t* original = image.data;
+	uint8_t* myDatax = Ix.data;
+	uint8_t* myDatay = Iy.data;
+	uint8_t* myData = image.data;//lucram pe matricea originala
+	//in case cols != strides
+	//parcurgere in interiorul pozei fara a modifica 
+
+	Mat copie_salt = image.clone();
+	uint8_t* elemente_sare_piper = copie_salt.data;
+	Mat salt = image.clone();
+	uint8_t* myData_s_p = salt.data;
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			elemente_sare_piper[i * _stride + j] = rand() % 256;
+		}
+	}
+	for (int i = 0; i < height; i++)
+	{
+		for (int j = 0; j < width; j++)
+		{
+			if (elemente_sare_piper[i* _stride + j] > 250) {
+				myData_s_p[i * _stride + j] = 255;
+			}
+			if (elemente_sare_piper[i * _stride + j] < 5)
+				myData_s_p[i * _stride + j] = 0;
+		}
+	}
+	imshow("imagine cu zgomot", salt);
+	int vecini[9];
+
+	for (int i = 1; i < height - 1; i++)
+	{
+		for (int j = 1; j < width - 1; j++)
+		{
+			if (myData_s_p[i*_stride + j] >= 200 || myData_s_p[i*_stride + j] <= 50) {
+				//uint8_t val = myData[i * _stride + j];
+				vecini[0] = myData_s_p[(i - 1)*_stride + j - 1];
+				vecini[1] = myData_s_p[(i - 1)*_stride + j];
+				vecini[2] = myData_s_p[(i - 1)*_stride + j + 1];
+				vecini[3] = myData_s_p[i *_stride + j - 1];
+				vecini[4] = myData_s_p[i *_stride + j];
+				vecini[5] = myData_s_p[i *_stride + j + 1];
+				vecini[6] = myData_s_p[(i + 1)*_stride + j - 1];
+				vecini[7] = myData_s_p[(i + 1)*_stride + j];
+				vecini[8] = myData_s_p[(i + 1)*_stride + j + 1];
+				for (int v = 0; v < 8; v++) {
+					for (int w = v + 1; w < 8; w++) {
+						if (vecini[v] > vecini[w]) {
+							int aux = vecini[v];
+							vecini[v] = vecini[w];
+							vecini[w] = aux;
+						}
+					}
+				}
+				myData_s_p[i * _stride + j] = vecini[4];
+			}
+
+		}
+	}
+	imshow("Imagine dupa filtru median", salt);
+
+//--------------------------------------
+	Mat gauss = image.clone();
+	float sigma =1.7;
+	uint8_t* element_gauss = gauss.data;
+	float kernel_gauss[5][5], k = 2;
+	for (int i = 1; i <= 5; i++) {
+		for (int j = 1; j <= 5; j++) {
+			kernel_gauss[i - 1][j - 1] = exp(-((i - k - 1) * (i - k - 1) + (j - k - 1) * (j - k - 1)) / (2*sigma*sigma)) / (2 * 3.14*sigma*sigma);
+		}
+	}
+	for (int i = 2; i < height-2; i++)
+	{
+		for (int j = 2; j < width-2; j++)
+		{
+			element_gauss[i * _stride + j] = original[(i - 2) * _stride + (j - 2)] * kernel_gauss[0][0] + original[(i - 2) * _stride + (j - 1)] * kernel_gauss[0][1] + original[(i - 2) * _stride + j] * kernel_gauss[0][2] + original[(i - 2) * _stride + (j + 1)] * kernel_gauss[0][3] + original[(i - 2) * _stride + (j + 2)] * kernel_gauss[0][4] + original[(i - 1) * _stride + (j - 2)] * kernel_gauss[1][0] + original[(i - 1) * _stride + (j - 1)] * kernel_gauss[1][1] + original[(i - 1) * _stride + j] * kernel_gauss[1][2] + original[(i - 1) * _stride + (j + 1)] * kernel_gauss[1][3] + original[(i - 1) * _stride + (j + 2)] * kernel_gauss[1][4] + original[i * _stride + (j - 2)] * kernel_gauss[2][0] + original[i * _stride + (j - 1)] * kernel_gauss[2][1] + original[i  * _stride + j] * kernel_gauss[2][2] + original[i * _stride + (j + 1)] * kernel_gauss[2][3] + original[i * _stride + (j + 2)] * kernel_gauss[2][4] + original[(i + 1) * _stride + (j - 2)] * kernel_gauss[3][0] + original[(i + 1) * _stride + (j - 1)] * kernel_gauss[3][1] + original[(i + 1) * _stride + j] * kernel_gauss[3][2] + original[(i + 1) * _stride + (j + 1)] * kernel_gauss[3][3] + original[(i + 1) * _stride + (j + 2)] * kernel_gauss[3][4] + original[(i + 2) * _stride + (j - 2)] * kernel_gauss[4][0] + original[(i + 2) * _stride + (j - 1)] * kernel_gauss[4][1] + original[(i + 2) * _stride + j] * kernel_gauss[4][2] + original[(i + 2) * _stride + (j + 1)] * kernel_gauss[4][3] + original[(i + 2) * _stride + (j + 2)] * kernel_gauss[4][4];
+		}
+	}
+	imshow("Filtru gauss", gauss);
+
+	int Kx[3][3] = { {-1,0,1},{-2,-2,0},{-1,0,1} };
+	int Ky[3][3] = { {1,2,1},{0,0,0},{-1,-2,-1} };
+
+	
+	for (int i = 1; i < height - 1; i++)
+	{
+		for (int j = 1; j < width - 1; j++) {
+			myDatax[i*_stride + j] = element_gauss[(i - 1)*_stride + j - 1] * Kx[0][0] + element_gauss[(i - 1)*_stride + j] * Kx[0][1] + element_gauss[(i - 1)*_stride + j + 1] * Kx[0][2] + element_gauss[(i)*_stride + j - 1] * Kx[1][0] + element_gauss[(i)*_stride + j] * Kx[1][1] + element_gauss[(i)*_stride + j + 1] * Kx[1][2] + element_gauss[(i + 1)*_stride + j - 1] * Kx[2][0] + element_gauss[(i + 1)*_stride + j] * Kx[2][1] + element_gauss[(i + 1)*_stride + j + 1] * Kx[2][2];
+			myDatay[i*_stride + j] = element_gauss[(i - 1)*_stride + j - 1] * Ky[0][0] + element_gauss[(i - 1)*_stride + j] * Ky[0][1] + element_gauss[(i - 1)*_stride + j + 1] * Ky[0][2] + element_gauss[(i)*_stride + j - 1] * Ky[1][0] + element_gauss[(i)*_stride + j] * Ky[1][1] + element_gauss[(i)*_stride + j + 1] * Ky[1][2] + element_gauss[(i + 1)*_stride + j - 1] * Ky[2][0] + element_gauss[(i + 1)*_stride + j] * Ky[2][1] + element_gauss[(i + 1)*_stride + j + 1] * Ky[2][2];
+		}
+	}
+	imshow("Imagine dupa Ox", Ix);
+	imshow("Imagine dupa Oy", Iy);
+	waitKey(0);
+}
