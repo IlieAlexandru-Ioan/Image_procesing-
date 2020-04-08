@@ -1,0 +1,31 @@
+#include<opencv2/core.hpp>
+#include<opencv2/opencv.hpp>
+#include <iostream>
+using namespace std;
+using namespace cv;
+int main()
+{
+	int a;
+	Mat image = imread("rainbow.jpg", CV_8UC1);
+	imshow("imag", image);
+	//...do some processing
+	uint8_t* myData = image.data;
+	int width = image.cols;
+	int height = image.rows;
+	int _stride = image.step;//in case cols != strides
+	for (int i = 0; i < height; i++)
+	{
+		for (int j = 0; j < width; j++)
+		{
+			uint8_t val = myData[i * _stride + j];
+			if (i > 10) {
+				myData[i * _stride + j] = 0;
+			}
+		}
+	}
+	imshow("image", image);
+	waitKey(0);
+}
+
+//Am facut o mica modificare imaginii pentru a ne asigura ca putem sa moficam valorile pixelilor si pentru a facte teste cu aacele valori pnetru ca am vrut sa vedem ca aceste valori se vor schimba daca folosim acest cod. 
+//In contunuare ne vom apuca sa implementam algoritmii pentru filtrele cerute.
