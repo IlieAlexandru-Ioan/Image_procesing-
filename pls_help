@@ -3,49 +3,48 @@
 #include<opencv2/highgui/highgui.hpp>
 #include <iostream>
 #include<math.h>
+
 using namespace std;
 using namespace cv;
-int main()
-{
-	Mat image = imread("emaa.jpg", CV_8UC1);
-	Mat Ix = image.clone();
-	Mat Iy = image.clone();
-	imshow("Imaginea initiala", image);
-	int width = Ix.cols;
-	int height = Ix.rows;
-	int _stride = Ix.step;
-	uint8_t* original = image.data;
-	uint8_t* myDatax = Ix.data;
-	uint8_t* myDatay = Iy.data;
-	uint8_t* myData = image.data;//lucram pe matricea originala
-	//in case cols != strides
-	//parcurgere in interiorul pozei fara a modifica 
-	Mat res = image.clone();
-	uint8_t* rez = res.data;
 
-	Mat copie_salt = image.clone();
-	uint8_t* elemente_sare_piper = copie_salt.data;
-	Mat salt = image.clone();
-	uint8_t* myData_s_p = salt.data;
+Mat image = imread("emaa.jpg", CV_8UC1);
+float theta[300][234];
+
+Mat Salt_and_pepper(Mat original) {
+	Mat zgomot = original.clone();
+	Mat imagine_cu_zgomot = original.clone();
+	int height = original.rows;
+	int width = original.cols;
+	int _stride = original.step;
+	uint8_t* purici = zgomot.data;
+	uint8_t* myData_s_p = imagine_cu_zgomot.data;
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
-			elemente_sare_piper[i * _stride + j] = rand() % 256;
+			purici[i * _stride + j] = rand() % 256;
 		}
 	}
 	for (int i = 0; i < height; i++)
 	{
 		for (int j = 0; j < width; j++)
 		{
-			if (elemente_sare_piper[i* _stride + j] > 250) {
+			if (purici[i* _stride + j] > 250) {
 				myData_s_p[i * _stride + j] = 255;
 			}
-			if (elemente_sare_piper[i * _stride + j] < 5)
+			if (purici[i * _stride + j] < 5)
 				myData_s_p[i * _stride + j] = 0;
 		}
 	}
-	imshow("imagine cu zgomot", salt);
-	int vecini[9];
+	imshow("Salt&Pepper", imagine_cu_zgomot);
+	return imagine_cu_zgomot;
+}
 
+Mat Filtru_median(Mat image) {
+	int vecini[9];
+	Mat copie = image.clone();
+	uint8_t* myData_s_p = copie.data;
+	int height = image.rows;
+	int width = image.cols;
+	int _stride = image.step;
 	for (int i = 1; i < height - 1; i++)
 	{
 		for (int j = 1; j < width - 1; j++)
@@ -75,10 +74,17 @@ int main()
 
 		}
 	}
-	imshow("Imagine dupa filtru median", salt);
+	imshow("Filtru median", copie);
+	return copie;
+}
 
-	//--------------------------------------
+
+Mat Filtru_gauss(Mat image) {
 	Mat gauss = image.clone();
+	int height = image.rows;
+	int width = image.cols;
+	int _stride = image.step;
+	uint8_t* original = image.data;
 	float sigma = 1.4;
 	uint8_t* element_gauss = gauss.data;
 	float kernel_gauss[5][5], k = 2;
@@ -102,10 +108,22 @@ int main()
 		}
 	}
 	imshow("Filtru gauss", gauss);
+	return gauss;
+}
 
+
+Mat Gradinet_theta(Mat image) {
+	Mat gradient = image.clone();
+	int height = image.rows;
+	int width = image.cols;
+	int _stride = image.step;
+	uint8_t* element_gauss = gradient.data;
+	Mat Ix = image.clone();
+	Mat Iy = image.clone();
+	uint8_t* myDatax = Ix.data;
+	uint8_t* myDatay = Iy.data;
 	int Kx[3][3] = { {-1,0,1},{-2,0,2},{-1,0,1} };
 	int Ky[3][3] = { {1,2,1},{0,0,0},{-1,-2,-1} };
-
 
 	for (int i = 1; i < height - 1; i++)
 	{
@@ -116,14 +134,14 @@ int main()
 	}
 	cout << width << " " << height << endl;
 	Mat modul_G = image.clone();
-	float t[300][234];
+	//float theta[300][234];
 	uint8_t* myDataG = modul_G.data;
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
 			myDataG[i*_stride + j] = sqrt(myDatax[i*_stride + j] * myDatax[i*_stride + j] + myDatay[i*_stride + j] * myDatay[i*_stride + j]);
 			int x = myDatax[i*_stride + j] + 1;
 			int y = myDatay[i*_stride + j];
-			t[i][j] = atan(y / x) * 180 / 3.14;
+			theta[i][j] = atan(y / x) * 180 / 3.14;
 		}
 	}
 	int max = 0;
@@ -142,30 +160,31 @@ int main()
 	imshow("Imagine dupa Ox", Ix);
 	imshow("Imagine dupa Oy", Iy);
 	imshow("gradientului", modul_G);
-	cout << max << endl;//e 255
-	cout << t[100][40];
-
-
-
-	Mat max_suppersion = modul_G.clone();
-	imshow("test", max_suppersion);
+	
+	return modul_G;
+}
+Mat Max_supr(Mat image) {
+	Mat max_suppersion = image.clone();
+	int height = image.rows;
+	int width = image.cols;
+	int _stride = image.step;
 	uint8_t* myDataSupr = max_suppersion.data;
 	for (int i = 1; i < height - 1; i++) {//marginile o sa le facem separat
 		for (int j = 1; j < width - 1; j++) {
 			int st, dr;
-			if (0 <= t[i][j] < 22.5 || 157.5 <= t[i][j] <= 180) {
+			if (0 <= theta[i][j] < 22.5 || 157.5 <= theta[i][j] <= 180) {
 				st = myDataSupr[i*_stride + j - 1];
 				dr = myDataSupr[i*_stride + j + 1];
 			}
-			else if (22.5 <= t[i][j] < 67.5) {
+			else if (22.5 <= theta[i][j] < 67.5) {
 				st = myDataSupr[(i + 1)*_stride + j - 1];
 				dr = myDataSupr[(i + 1)*_stride + j + 1];
 			}
-			else if (67.5 <= t[i][j] < 122.5) {
+			else if (67.5 <= theta[i][j] < 122.5) {
 				st = myDataSupr[(i - 1)*_stride + j];
 				dr = myDataSupr[(i + 1)*_stride + j];
 			}
-			else if (122.5 <= t[i][j] < 157.5) {
+			else if (122.5 <= theta[i][j] < 157.5) {
 				st = myDataSupr[(i - 1)*_stride + j - 1];
 				dr = myDataSupr[(i + 1)*_stride + j + 1];
 			}
@@ -175,14 +194,20 @@ int main()
 		}
 	}
 	imshow("Suppression", max_suppersion);
+	return max_suppersion;
+}
 
-
-
-
+Mat Double_thrs(Mat image) {
+	Mat res = image.clone();
+	uint8_t* rez = res.data;
+	uint8_t* myDataSupr = image.data;
+	int height = image.rows;
+	int width = image.cols;
+	int _stride = image.step;
 	float lowtreshholdratio = 0.05, hightreshholdratio = 0.09;
 	float hightreshhold, lowtreshhold;
 	uint8_t weak = 25, strong = 255;
-	max = 0;
+	int max = 0;
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
 			if (myDataSupr[i * _stride + j] > max)
@@ -206,10 +231,17 @@ int main()
 		}
 	}
 	imshow("res", res);
+	return res;
+}
 
-
-
-	Mat histerezis = res.clone();
+Mat Edge_tracking(Mat image) {
+	Mat histerezis = image.clone();
+	Mat max_suppersion = image.clone();
+	int height = image.rows;
+	int width = image.cols;
+	int _stride = image.step;
+	int weak = 25;
+	int strong = 255;
 	uint8_t*h_data = histerezis.data;
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
@@ -222,6 +254,22 @@ int main()
 		}
 	}
 	imshow("final", histerezis);
+	return histerezis;
+}
+int main()
+{
+
+	imshow("Imaginea initiala", image);
+	uint8_t* original = image.data;
+
+	Mat sare_piper = Salt_and_pepper(image);
+	Mat reparere = Filtru_median(sare_piper);
+	Mat gauss = Filtru_gauss(image);
+	Mat gragient = Gradinet_theta(gauss);//aici am emotii
+	Mat max_s = Max_supr(gragient);
+	Mat Double_threshold = Double_thrs(max_s);
+	Mat Edge_Tracking_by_Hysteresis = Edge_tracking(Double_threshold);
 	waitKey(0);
 }
+
 
