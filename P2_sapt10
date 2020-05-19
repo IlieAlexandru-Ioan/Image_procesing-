@@ -247,10 +247,10 @@ Mat Edge_tracking(Mat image) {
 		for (int j = 1; j < width-1; j++) {
 			if (h_data[i*_stride + j] == weak) {
 				if (h_data[(i + 1)*_stride + j - 1] == strong || h_data[(i + 1)*_stride + j] == strong || h_data[(i + 1)*_stride + j + 1] == strong || h_data[(i)*_stride + j - 1] == strong || h_data[(i)*_stride + j+1] == strong || h_data[(i-1)*_stride + j - 1] == strong || h_data[(i - 1)*_stride + j ] == strong || h_data[(i - 1)*_stride + j+1])
-					h_data[i*_stride + j] == strong;
+					h_data[i*_stride + j] = strong;
 			}
 			else
-				h_data[i*_stride + j] == 0;
+				h_data[i*_stride + j] = 0;
 		}
 	}
 	imshow("final", histerezis);
