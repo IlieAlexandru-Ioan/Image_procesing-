@@ -3,15 +3,9 @@
 #include<opencv2/highgui/highgui.hpp>
 #include <iostream>
 #include<math.h>
-
+#include<string>
 using namespace std;
 using namespace cv;
-
-Mat image = imread("ema.jpg", CV_8UC1);
-int height = image.rows;
-int width = image.cols;
-int _stride = image.step;
-float *theta = (float *)malloc((height)*(width) * sizeof(float));
 
 Mat Salt_and_pepper(Mat original) {
 	Mat zgomot = original.clone();
@@ -74,50 +68,37 @@ Mat Filtru_median(Mat image) {
 	return copie;
 }
 
-
-Mat Filtru_gauss(Mat image) {
+Mat Filtru_gauss(Mat image, int dim, float sigma) {
 	Mat gauss = image.clone();
+	int height = image.rows;
+	int width = image.cols;
+	int _stride = image.step;
 	uint8_t* original = image.data;
-	float sigma = 1.2;
 	uint8_t* element_gauss = gauss.data;
-	float *kernel_gauss = (float *)malloc((dim)*(dim) * sizeof(float));
+	float* kernel_gauss = (float*)malloc((dim) * (dim) * sizeof(float));
 	int k = (dim - 1) / 2;
 	for (int i = 0; i < dim; i++) {
 		for (int j = 0; j < dim; j++) {
-			kernel_gauss[i *(_stride)+j] = exp(-((i - k) * (i - k) + (j - k) * (j - k)) / (2 * sigma*sigma)) / (2 * 3.14*sigma*sigma);
+			kernel_gauss[i * (_stride)+j] = exp(-((i - k) * (i - k) + (j - k) * (j - k)) / (2 * sigma * sigma)) / (2 * 3.14 * sigma * sigma);
 		}
 	}
-	//verificare kernel
-	float suma_totala = 0;
-	for (int i = 0; i < dim; i++) {
-		for (int j = 0; j < dim; j++) {
-			cout << kernel_gauss[i * _stride + j] << " ";
-			suma_totala += kernel_gauss[i * _stride + j];
-		}
-		cout << endl;
-	}
-	cout << suma_totala << endl;
 	for (int i = k; i < height - k; i++)
 	{
 		for (int j = k; j < width - k; j++)
 		{
 			float suma = 0;
-			//element_gauss[i * _stride + j] = original[(i - 2) * _stride + (j - 2)] * kernel_gauss[0] + original[(i - 2) * _stride + (j - 1)] * kernel_gauss[0 * _stride + 1] + original[(i - 2) * _stride + j] * kernel_gauss[0 * _stride + 2] + original[(i - 2) * _stride + (j + 1)] * kernel_gauss[0 * _stride + 3] + original[(i - 2) * _stride + (j + 2)] * kernel_gauss[0 * _stride + 4] + original[(i - 1) * _stride + (j - 2)] * kernel_gauss[1 * _stride + 0] + original[(i - 1) * _stride + (j - 1)] * kernel_gauss[1 * _stride + 1] + original[(i - 1) * _stride + j] * kernel_gauss[1 * _stride + 2] + original[(i - 1) * _stride + (j + 1)] * kernel_gauss[1 * _stride + 3] + original[(i - 1) * _stride + (j + 2)] * kernel_gauss[1 * _stride + 4] + original[i * _stride + (j - 2)] * kernel_gauss[2 * _stride + 0] + original[i * _stride + (j - 1)] * kernel_gauss[2 * _stride + 1] + original[i  * _stride + j] * kernel_gauss[2 * _stride + 2] + original[i * _stride + (j + 1)] * kernel_gauss[2 * _stride + 3] + original[i * _stride + (j + 2)] * kernel_gauss[2 * _stride + 4] + original[(i + 1) * _stride + (j - 2)] * kernel_gauss[3 * _stride + 0] + original[(i + 1) * _stride + (j - 1)] * kernel_gauss[3 * _stride + 1] + original[(i + 1) * _stride + j] * kernel_gauss[3 * _stride + 2] + original[(i + 1) * _stride + (j + 1)] * kernel_gauss[3 * _stride + 3] + original[(i + 1) * _stride + (j + 2)] * kernel_gauss[3 * _stride + 4] + original[(i + 2) * _stride + (j - 2)] * kernel_gauss[4 * _stride + 0] + original[(i + 2) * _stride + (j - 1)] * kernel_gauss[4 * _stride + 1] + original[(i + 2) * _stride + j] * kernel_gauss[4 * _stride + 2] + original[(i + 2) * _stride + (j + 1)] * kernel_gauss[4 * _stride + 3] + original[(i + 2) * _stride + (j + 2)] * kernel_gauss[4 * _stride + 4];
 			for (int z = 0; z < dim; z++) {
 				for (int w = 0; w < dim; w++) {
-					suma += kernel_gauss[z*_stride + w] * original[(i - k + z)*_stride + j - k + w];
+					suma += kernel_gauss[z * _stride + w] * original[(i - k + z) * _stride + j - k + w];
 				}
 			}
-			
 			element_gauss[i * _stride + j] = suma;
 		}
 	}
-	imshow("Filtru gauss", gauss);
 	return gauss;
 }
 
-
-Mat Gradinet_theta(Mat image) {
+Mat Gradient_theta(Mat image) {
 	Mat gradient = image.clone();
 	uint8_t* element_gauss = gradient.data;
 	Mat Ix = image.clone();
@@ -126,50 +107,58 @@ Mat Gradinet_theta(Mat image) {
 	uint8_t* myDatay = Iy.data;
 	Mat modul_G = image.clone();
 	uint8_t* myDataG = modul_G.data;
+	int height = image.rows;
+	int width = image.cols;
+	int _stride = image.step;
+	float* theta = (float*)malloc((height) * (width) * sizeof(float));
+	int k = (3 - 1) / 2;
 	int Kx[3][3] = { {-1,0,1},{-2,0,2},{-1,0,1} };
 	int Ky[3][3] = { {1,2,1},{0,0,0},{-1,-2,-1} };
 	int X;
 	int Y;
-	int sum;
+	float sum;
 	for (int i = 1; i < height - 1; i++)
 	{
 		for (int j = 1; j < width - 1; j++) {
-			X = element_gauss[(i - 1)*_stride + j - 1] * Kx[0][0] + element_gauss[(i - 1)*_stride + j] * Kx[0][1] + element_gauss[(i - 1)*_stride + j + 1] * Kx[0][2] + element_gauss[(i)*_stride + j - 1] * Kx[1][0] + element_gauss[(i)*_stride + j] * Kx[1][1] + element_gauss[(i)*_stride + j + 1] * Kx[1][2] + element_gauss[(i + 1)*_stride + j - 1] * Kx[2][0] + element_gauss[(i + 1)*_stride + j] * Kx[2][1] + element_gauss[(i + 1)*_stride + j + 1] * Kx[2][2];
-			Y = element_gauss[(i - 1)*_stride + j - 1] * Ky[0][0] + element_gauss[(i - 1)*_stride + j] * Ky[0][1] + element_gauss[(i - 1)*_stride + j + 1] * Ky[0][2] + element_gauss[(i)*_stride + j - 1] * Ky[1][0] + element_gauss[(i)*_stride + j] * Ky[1][1] + element_gauss[(i)*_stride + j + 1] * Ky[1][2] + element_gauss[(i + 1)*_stride + j - 1] * Ky[2][0] + element_gauss[(i + 1)*_stride + j] * Ky[2][1] + element_gauss[(i + 1)*_stride + j + 1] * Ky[2][2];
-			sum= sqrt(X * X + Y * Y);
+			X = Y = 0;
+			for (int z = 0; z < 3; z++) {
+				for (int w = 0; w < 3; w++) {
+					X += element_gauss[(i - k + z) * _stride + j - k + w] * Kx[z][w];
+					Y += element_gauss[(i - k + z) * _stride + j - k + w] * Ky[z][w];
+				}
+			}
+			sum = sqrt(X * X + Y * Y);
 			if (sum > 255) {
 				sum = 255;
 			}
 			if (sum < 0) {
 				sum = 0;
 			}
-			myDataG[i*_stride + j] = sum;
+			myDataG[i * _stride + j] = sum;
 		}
 	}
-	imshow("gradientului", modul_G);
 
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
-			int x = myDatax[i*_stride + j] + 1;
-			int y = myDatay[i*_stride + j];
-			theta[i*_stride + j] = atan(y / x) * 180 / 3.14;
-			if (theta[i*_stride + j] < 0) {
-				theta[i*_stride + j] += 180;
+			int x = myDatax[i * _stride + j] + 1;
+			int y = myDatay[i * _stride + j];
+			theta[i * _stride + j] = atan(y / x) * 180 / 3.14;
+			if (theta[i * _stride + j] < 0) {
+				theta[i * _stride + j] += 180;
 			}
 		}
 	}
 	int max = 0;
-	for (int i = 3; i < height-3; i++) {
-		for (int j = 3; j < width-3; j++) {
-			if (myDataG[i*_stride + j] > max) {
-				max = myDataG[i*_stride + j];
+	for (int i = 3; i < height - 3; i++) {
+		for (int j = 3; j < width - 3; j++) {
+			if (myDataG[i * _stride + j] > max) {
+				max = myDataG[i * _stride + j];
 			}
 		}
 	}
-	imshow("grd2", modul_G);
-
 	return modul_G;
 }
+
 Mat Max_supr(Mat image) {
 	Mat img= image.clone();
 	Mat max_suppersion = image.clone();
@@ -267,20 +256,58 @@ Mat Edge_tracking(Mat image) {
 	imshow("final", histerezis);
 	return histerezis;
 }
+
 int main()
 {
+	Mat imagine_curenta;
+	Mat imagine_prelucrata;
+	int n,nr_linii_kernel;
+	float sigma;
+	string nume_imagine;
+	while (1) {
+		cout << "Apasa 0 pentru a citi imaginea\n";
+		cout << "Apasa 1 pentru a adauga zgomot sare si piper pe imagine\n";
+		cout << "Apasa 2 pentru a aplica filtru median pe imagine\n";
+		cout << "Apasa 3 pentru a aplica un filtru gaussian pe imagine\n";
+		cout << "Apasa 4 pentru a aplica un canny edge detector\n";
+		cout << "Apasa 5 pentru a afisa imaginea \n";
+		cout << "Apasa 6 pentru a iesi din aplicatie\n";
+		cin >> n;
+		switch (n)
+		{
+		case 0:
+			cin >> nume_imagine;
+			imagine_curenta = imread(nume_imagine, CV_8UC1);
+			break;
+		case 1:
+			imagine_curenta = Salt_and_pepper(imagine_curenta);
+			break;
+		case 2:
+			imagine_curenta = Filtru_median(imagine_curenta);
+			break;
+		case 3:
+			cout << "Introdu numarul de linii si coloane al kernelului\n";
+			cin >> nr_linii_kernel;
+			cout << "Introdu valoarea lui sigma\n";
+			cin >> sigma;
+			imagine_curenta = Filtru_gauss(imagine_curenta,nr_linii_kernel,sigma);
+			break;
+		case 4:
+			imagine_curenta = Gradient_theta(imagine_curenta);
+			imagine_curenta = Max_supr(imagine_curenta);
+			imagine_curenta = Double_thrs(imagine_curenta);
+			imagine_curenta = Edge_tracking(imagine_curenta);
+			break;
 
-	imshow("Imaginea initiala", image);
-	uint8_t* original = image.data;
-
-	Mat sare_piper = Salt_and_pepper(image);
-	Mat reparere = Filtru_median(sare_piper);
-	Mat gauss = Filtru_gauss(image);
-	Mat gragient = Gradinet_theta(gauss);
-	Mat max_s = Max_supr(gragient);
-	Mat Double_threshold = Double_thrs(max_s);
-	Mat Edge_Tracking_by_Hysteresis = Edge_tracking(Double_threshold);
-	waitKey(0);
+		case 5:
+			imshow("imagine afisata", imagine_curenta);
+			waitKey(0);
+			break;
+		case 6:
+			exit(0);
+			break;
+		default:
+			break;
+		}
+	}
 }
-
-
